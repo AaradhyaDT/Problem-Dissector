@@ -24,10 +24,11 @@ def test_evaluate_archive_reports_missing_statements_and_curated_scores(tmp_path
     tasks_root.mkdir(parents=True)
     problem = tasks_root / "addition"
     problem.mkdir()
-    (problem / "statement.md").write_text(
-        "# Addition\n### Constraints and notes\n$1 \\\\leq A \\\\leq 100$\n",
-        encoding="utf-8",
-    )
+    statement_text = r"""# Addition
+### Constraints and notes
+$1 \leq A \leq 100$
+"""
+    (problem / "statement.md").write_text(statement_text, encoding="utf-8")
     (problem / "problem.json").write_text(
         '{"slug":"addition","title":"Addition","difficulty":"TUTORIAL","time_limit":"500 ms","memory_limit":"128 MB"}',
         encoding="utf-8",
