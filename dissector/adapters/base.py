@@ -1,7 +1,8 @@
 """Adapter interface for loading problems from external repositories/datasets."""
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
 
 
 class RawProblemData(BaseModel):
@@ -13,16 +14,16 @@ class RawProblemData(BaseModel):
     difficulty: str = "UNKNOWN"
     platform: str = "csacademy"
     source_url: Optional[str] = None
-    extra_metadata: Dict[str, Any] = {}
+    extra_metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class BaseCorpusAdapter(ABC):
     @abstractmethod
     def list_slugs(self) -> List[str]:
         """List all available problem slugs in the corpus."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def load_problem(self, slug: str) -> Optional[RawProblemData]:
         """Load full problem statement and limits by slug."""
-        pass
+        raise NotImplementedError

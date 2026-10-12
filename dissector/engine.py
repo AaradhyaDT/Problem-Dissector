@@ -1,5 +1,7 @@
+"""Problem dissection pipeline; hypotheses must not be mistaken for proofs."""
 import re
 from typing import List
+
 from dissector.adapters.base import RawProblemData
 from dissector.constraint_analyzer import analyze_constraints
 from dissector.contract import AgentDissectionContract, AsymptoticCeiling, ImplementationGuidelines
@@ -8,208 +10,194 @@ from dissector.pattern_matcher import classify_archetypes
 
 
 def parse_time_ms(limit_str: str) -> int:
-    m = re.search(r"(\d+)\s*ms", limit_str, re.I)
-    if m:
-        return int(m.group(1))
-    m_s = re.search(r"([0-9.]+)\s*s", limit_str, re.I)
-    if m_s:
-        return int(float(m_s.group(1)) * 1000)
+    text = str(limit_str or "")
+    match = re.search(r"(\d+(?:\.\d+)?)\s*ms\b", text, re.IGNORECASE)
+    if match:
+        return max(1, int(float(match.group(1))))
+    seconds = re.search(r"(\d+(?:\.\d+)?)\s*s\b", text, re.IGNORECASE)
+    if seconds:
+        return max(1, int(float(seconds.group(1)) * 1000))
     return 1000
 
 
 def parse_memory_mb(limit_str: str) -> int:
-    m = re.search(r"(\d+)\s*mb", limit_str, re.I)
-    if m:
-        return int(m.group(1))
-    return 256
+    match = re.search(r"(\d+(?:\.\d+)?)\s*(?:mib|mb)\b", str(limit_str or ""), re.IGNORECASE)
+    return max(1, int(float(match.group(1)))) if match else 256
 
 
 def derive_observations(problem: RawProblemData, archetypes) -> List[str]:
-    observations = []
+    """Return qualified clues rather than asserting unproven invariants."""
+    observations: List[str] = []
     text = problem.statement_markdown.lower()
 
-    if "palindrome" in text:
-        observations.append("Subproblem exhibits optimal substructure around matching string ends: $S[i] == S[j]$.")
-    if "tree" in text or "acyclic" in text:
-        observations.append("Graph is a connected acyclic structure (N-1 edges). Path between any two vertices is unique.")
-    if "grid" in text or "matrix" in text:
-        observations.append("State can be modeled as implicit 2D/3D graph where transitions are restricted to 4 or 8 neighboring cells.")
-    if "modulo" in text:
-        observations.append("Arithmetic operations must apply modular reduction after every addition, subtraction, and multiplication.")
-    if "permutation" in text:
-        observations.append(r"Elements are a bijection of $\{1, \dots, N\}$. Cycle decomposition or inversion count may apply.")
+    if re.search(r"\bpalindrome(s)?\b", text):
+        observations.append(
+            "Potential string clue: palindrome conditions often compare mirrored positions; derive the exact invariant from the statement before selecting a string or DP technique."
+        )
+    if re.search(r"\btrees?\b", text):
+        observations.append(
+            "Structural clue: if the input is guaranteed to be a tree, it is connected and acyclic and each vertex pair has a unique simple path; confirm the guarantee and scope."
+        )
+    if re.search(r"\bgrid\b|\bmatrix\b", text):
+        observations.append(
+            "State-model clue: grid cells may be modeled as graph states. Allowed moves, blocked cells, diagonals, and wraparound must come from the statement; do not assume 4- or 8-neighbor movement."
+        )
+    if "modulo" in text or re.search(r"\bmod\s+\d+", text):
+        observations.append(
+            "Modular-arithmetic clue: establish which outputs or intermediate values require the modulus; handle subtraction and multiplication according to the language and required output."
+        )
+    if re.search(r"\bpermutation(s)?\b", text):
+        observations.append(
+            "Input-structure clue: if input is guaranteed to be a permutation, each permitted value occurs exactly once. Cycle decomposition or inversion counting applies only if it supports the objective."
+        )
     if not observations:
-        observations.append("Problem requires transforming given input constraints into a canonical sequence of deterministic operations.")
-
+        observations.append(
+            "No high-confidence structural observation was inferred from keywords. Derive invariants from the formal statement, examples, and constraints; archetype ranking is not proof."
+        )
     return observations
 
 
 def derive_traps(problem: RawProblemData, constraints) -> List[EdgeCaseTrap]:
-    traps = []
+    traps: List[EdgeCaseTrap] = []
     text = problem.statement_markdown.lower()
-
-    # Integer overflow check
-    has_large_vals = any(v > 2e9 for v in constraints.variables.values())
-    if has_large_vals or "large" in text or "sum" in text:
+    bounds = list(constraints.variables.values())
+    possible_overflow = (
+        any(value > 2**31 - 1 for value in bounds)
+        or bool(re.search(r"\b(sum|product|multiply|squared|square)\b", text))
+    )
+    if possible_overflow:
         traps.append(EdgeCaseTrap(
-            category="Integer Overflow",
-            description="Accumulating sums or computing products will exceed 32-bit signed integer limits ($2^{31}-1$).",
-            mitigation="Use `long long` in C++ or arbitrary-precision integers in Python."
+            category="Potential Integer Overflow",
+            description="Large values or arithmetic operations may exceed a 32-bit signed integer; this is a risk flag, not proof that overflow occurs.",
+            mitigation="Derive maximum intermediate values from constraints and use a sufficiently wide type (such as int64_t in C++) when required.",
         ))
 
-    # Empty / Single element
     traps.append(EdgeCaseTrap(
         category="Boundary Extremes",
-        description="Verify edge scenarios where N = 1, empty operations, or when all inputs are identical/zero.",
-        mitigation="Add explicit guard clauses for initial values before entering processing loops."
+        description="Check minimum-size cases, empty-operation cases if allowed, duplicates, all-equal values, zero/negative values, and unreachable states where relevant.",
+        mitigation="Build edge cases from the statement's guarantees; do not assume N=0 or negative values are valid.",
     ))
-
-    # Fast I/O check
-    if any(v >= 1e5 for v in constraints.variables.values()):
+    if any(value >= 100000 for value in bounds):
         traps.append(EdgeCaseTrap(
-            category="I/O Bottleneck (TLE)",
-            description="Input size exceeds $10^5$ tokens; default unsynced I/O will cause false Time Limit Exceeded (TLE).",
-            mitigation="Include `cin.tie(NULL); ios_base::sync_with_stdio(false);` in C++ or `sys.stdin.read().split()` in Python."
+            category="Large-Input Performance",
+            description="At least one parsed dimension reaches 100000. Check total input volume and aggregate test cases; nested quadratic scans may be too expensive.",
+            mitigation="Estimate actual total work. Fast I/O may help with large token counts, but dimension size alone does not prove an I/O bottleneck.",
         ))
-
     return traps
 
 
 def generate_blueprint(problem: RawProblemData, target_comp, archetypes) -> str:
-    primary = archetypes[0].name if archetypes else "Greedy / Simulation"
-    paradigms = archetypes[0].recommended_paradigms if archetypes else ["Linear Scan"]
-    
-    return f"""### 🛠️ Algorithmic Blueprint & Architecture
+    primary = archetypes[0].name if archetypes else "Unclassified"
+    paradigms = archetypes[0].recommended_paradigms if archetypes else []
+    return f"""### Preliminary implementation checklist (not a proven solution)
 
-1. **Target Complexity**: `{target_comp.admissible_time_complexity}` Time | `{target_comp.admissible_space_complexity}` Space
-2. **Primary Paradigm**: **{primary}** ({', '.join(paradigms[:2])})
-3. **Execution Steps**:
-   - **Step 1 (Ingestion)**: Read input with fast I/O stream; parse bounds into primitives.
-   - **Step 2 (State Representation)**: Pre-allocate static memory buffers or containers adhering to `{target_comp.admissible_space_complexity}`.
-   - **Step 3 (Core Execution)**: Traverse/process items ensuring per-element transitions do not exceed admissible complexity budget.
-   - **Step 4 (Formatting)**: Output computed scalar or sequence adhering to standard whitespace and newline invariants.
+1. **Constraint ceiling:** {target_comp.admissible_time_complexity}; {target_comp.admissible_space_complexity}.
+2. **Keyword-based archetype hypothesis:** {primary}. Possible paradigms: {", ".join(paradigms[:2]) if paradigms else "none inferred"}.
+3. **Verify the model:** identify input guarantees, state space, valid transitions, objective, and output from the full statement.
+4. **Validate complexity:** account for every dimension, all test cases, preprocessing, and auxiliary memory.
+5. **Test the reasoning:** check examples and construct boundary cases from the actual guarantees.
+
+The analyzer does not prove a solution or infer problem-specific transitions. Verify the algorithm independently.
 """
 
 
 def dissect_problem(problem: RawProblemData) -> DissectionReport:
-    time_ms = parse_time_ms(problem.time_limit_str)
-    mem_mb = parse_memory_mb(problem.memory_limit_str)
-
-    # 1. Constraint Analysis
-    constraints = analyze_constraints(problem.statement_markdown, time_ms, mem_mb)
-
-    # 2. Archetype Pattern Matching
+    constraints = analyze_constraints(
+        problem.statement_markdown,
+        time_limit_ms=parse_time_ms(problem.time_limit_str),
+        memory_limit_mb=parse_memory_mb(problem.memory_limit_str),
+    )
     archetypes = classify_archetypes(problem.statement_markdown)
-
-    # 3. Key Observations
     observations = derive_observations(problem, archetypes)
-
-    # 4. Traps
     traps = derive_traps(problem, constraints)
-
-    # 5. Blueprint
     blueprint = generate_blueprint(problem, constraints.target_complexity, archetypes)
-
-    diff = problem.difficulty.upper() if problem.difficulty else "UNKNOWN"
-
+    difficulty = problem.difficulty.upper() if problem.difficulty else "UNKNOWN"
+    if difficulty not in {"TUTORIAL", "EASY", "MEDIUM", "HARD", "UNKNOWN"}:
+        difficulty = "UNKNOWN"
     return DissectionReport(
-        slug=problem.slug,
-        title=problem.title,
-        platform=problem.platform,
-        difficulty=diff,
-        constraints=constraints,
-        archetypes=archetypes,
-        key_observations=observations,
-        solution_blueprint=blueprint,
-        pitfalls_and_traps=traps,
-        source_url=problem.source_url
+        slug=problem.slug, title=problem.title, platform=problem.platform,
+        difficulty=difficulty, constraints=constraints, archetypes=archetypes,
+        key_observations=observations, solution_blueprint=blueprint,
+        pitfalls_and_traps=traps, source_url=problem.source_url,
     )
 
 
 def build_agent_contract(report: DissectionReport) -> AgentDissectionContract:
-    """Transform a full dissection report into a concise cognitive contract for downstream agents."""
+    """Build a structured contract with uncertainty carried forward."""
     comp = report.constraints.target_complexity
-    time_bound = comp.admissible_time_complexity if comp else "O(N log N)"
-    space_bound = comp.admissible_space_complexity if comp else "O(N)"
-    ops_budget = comp.max_operations if comp else int(1e8)
+    time_bound = comp.admissible_time_complexity if comp else "No reliable ceiling inferred; analyze manually"
+    space_bound = comp.admissible_space_complexity if comp else "No reliable space guidance inferred"
+    ops_budget = comp.max_operations if comp else 0
 
-    dominant_var = "N"
-    dominant_val = 100000.0
     if report.constraints.variables:
-        for k in ["N", "n", "M", "m", "K", "k"]:
-            if k in report.constraints.variables:
-                dominant_var = k
-                dominant_val = report.constraints.variables[k]
-                break
+        dominant_var, dominant_val = max(report.constraints.variables.items(), key=lambda item: item[1])
+    else:
+        dominant_var, dominant_val = "N", 100000.0
 
-    # Determine integer width and fast I/O
-    overflow_risk = any(t.category == "Integer Overflow" for t in report.pitfalls_and_traps)
-    int_types = "long long / int64_t" if overflow_risk else "int (32-bit)"
-    fast_io = dominant_val >= 100000.0 or any(t.category == "I/O Bottleneck (TLE)" for t in report.pitfalls_and_traps)
+    caveats = list(report.constraints.warnings)
+    if comp:
+        caveats.extend(comp.warnings)
+    caveats.extend([
+        "Archetype scores are keyword-match scores, not calibrated probabilities.",
+        "Generated observations are candidate clues, not proven solution invariants.",
+        "Validate every recommendation against the full statement before implementation.",
+    ])
+    caveats = list(dict.fromkeys(caveats))
 
-    # Data structures selection based on archetype
-    primary_arch = report.archetypes[0] if report.archetypes else None
-    arch_id = primary_arch.archetype_id if primary_arch else "00"
-    arch_name = primary_arch.name if primary_arch else "General Algorithmic"
+    overflow_risk = any("Overflow" in trap.category for trap in report.pitfalls_and_traps)
+    integer_types = (
+        "Prove maximum intermediate values; use int64_t/long long where required"
+        if overflow_risk else
+        "Choose integer width from proven input and accumulator bounds"
+    )
+    fast_io_may_help = dominant_val >= 100000.0
 
-    ds_map = {
-        "01": ["std::vector (1D/2D DP table)", "std::array"],
-        "02": ["std::vector<std::vector<int>> (Adjacency list)", "std::queue (BFS)", "std::priority_queue (Dijkstra)"],
-        "03": ["std::vector<std::vector<int>> (Tree Adj)", "int up[N][20] (Binary lifting table)"],
-        "04": ["Segment Tree / Fenwick Tree (BIT)", "Disjoint Set Union (DSU)"],
-        "05": ["Sieve vector<bool>", "Modular arithmetic functions"],
-        "06": ["std::vector with std::sort", "Two pointers indices", "std::deque"],
-        "07": ["struct Point { long long x, y; }", "std::vector<Point>"],
-        "08": ["std::string", "std::vector<int> (Prefix/Z table)", "Trie Node struct"],
-        "09": ["int grundy[MAX]", "Memoization cache"],
-        "10": ["Query response loop with std::flush / cout << endl"],
+    primary = report.archetypes[0] if report.archetypes else None
+    arch_id = primary.archetype_id if primary else "00"
+    arch_name = primary.name if primary else "Unclassified (no keyword evidence)"
+    structure_map = {
+        "01": ["Choose a DP state/table only after proving a recurrence"],
+        "02": ["Choose graph representation and BFS/Dijkstra/etc. from graph and edge-weight semantics"],
+        "03": ["Use tree structures only if the input is guaranteed to be a tree"],
+        "04": ["Consider Segment Tree/Fenwick/DSU only if query/update operations justify them"],
+        "05": ["Choose number-theory tools from the exact mathematical requirements"],
+        "06": ["Use greedy/two pointers only after establishing ordering or an exchange argument"],
+        "07": ["Use geometry techniques only if the constraints and objective require them"],
+        "08": ["Choose string algorithms after identifying the matching or substring requirement"],
+        "09": ["Prove game states and winning conditions before using Grundy/minimax methods"],
+        "10": ["Derive the construction or interaction protocol from the statement"],
     }
-    rec_ds = ds_map.get(arch_id, ["std::vector", "std::unordered_map"])
+    recommended_structures = structure_map.get(
+        arch_id, ["No specific data structure is justified by the available keyword evidence"]
+    )
 
-    # Forbidden approaches based on Big-O
+    estimates = comp.estimated_operations_by_candidate if comp else {}
     forbidden = []
-    if "O(N log N)" in time_bound or "O(N)" in time_bound:
-        forbidden.append(f"Nested O({dominant_var}^2) iterations — will exceed judge operations budget ({ops_budget:.1e}) and trigger TLE.")
+    if estimates.get("O(N^2)", 0) > ops_budget:
+        forbidden.append("Do not use a quadratic algorithm without a stronger bound or proof that the real workload is smaller.")
     if overflow_risk:
-        forbidden.append("Using signed 32-bit int for accumulated sums/products — triggers silent integer overflow.")
-    forbidden.append("Unbuffered slow standard I/O streams without fast I/O optimization.")
-
-    # Edge cases
-    edge_cases = [t.description for t in report.pitfalls_and_traps]
+        forbidden.append("Do not assume 32-bit arithmetic is safe; prove intermediate bounds or use a wider type.")
 
     prompt_summary = (
-        f"Implement in C++20 with {time_bound} time and {space_bound} space complexity. "
-        f"Archetype: {arch_name}. Integer types: {int_types}. "
-        f"Ensure fast I/O is enabled and avoid {', '.join(forbidden[:1])}."
-    )
-
-    asymptotics = AsymptoticCeiling(
-        time_complexity=time_bound,
-        space_complexity=space_bound,
-        ops_budget=ops_budget,
-        dominant_dimension=f"{dominant_var} <= {int(dominant_val)}"
-    )
-
-    guidelines = ImplementationGuidelines(
-        recommended_language="C++20",
-        data_structures=rec_ds,
-        fast_io_required=fast_io,
-        overflow_risk=overflow_risk,
-        integer_types=int_types
+        f"Implement in C++20 only after independently verifying the algorithm. "
+        f"Constraint analysis suggests: {time_bound}; space guidance: {space_bound}. "
+        f"Primary keyword hypothesis: {arch_name}. Check the caveats and derive actual invariants, "
+        f"transitions, total test-case work, and integer bounds from the full statement."
     )
 
     return AgentDissectionContract(
-        task_slug=report.slug,
-        title=report.title,
-        platform=report.platform,
+        task_slug=report.slug, title=report.title, platform=report.platform,
         difficulty=str(report.difficulty),
-        asymptotics=asymptotics,
-        archetype_id=arch_id,
-        archetype_name=arch_name,
-        core_invariants=report.key_observations,
-        forbidden_approaches=forbidden,
-        edge_case_checklist=edge_cases,
-        guidelines=guidelines,
-        agent_prompt_summary=prompt_summary
+        asymptotics=AsymptoticCeiling(
+            time_complexity=time_bound, space_complexity=space_bound, ops_budget=ops_budget,
+            dominant_dimension=f"{dominant_var} <= {int(dominant_val)} (largest parsed bound proxy)",
+        ),
+        archetype_id=arch_id, archetype_name=arch_name,
+        core_invariants=report.key_observations, forbidden_approaches=forbidden,
+        edge_case_checklist=[trap.description for trap in report.pitfalls_and_traps],
+        guidelines=ImplementationGuidelines(
+            recommended_language="C++20", data_structures=recommended_structures,
+            fast_io_may_help=fast_io_may_help, overflow_risk=overflow_risk, integer_types=integer_types,
+        ),
+        analysis_caveats=caveats, agent_prompt_summary=prompt_summary,
     )
-
