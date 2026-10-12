@@ -219,7 +219,9 @@ def classify_archetypes(statement_text: str, top_k: int = 3) -> List[ArchetypeMa
                 strong_hits += 1
                 strongest_hit = max(strongest_hit, weight)
 
-        if score <= 0:
+        # A single generic mention (for example, "game" used as story context)
+        # is not enough evidence to nominate an archetype.
+        if score < 3 and strong_hits == 0:
             continue
 
         evidence.sort(key=lambda item: (-item[0], -len(item[1]), item[1]))
