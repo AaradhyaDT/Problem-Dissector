@@ -18,6 +18,10 @@ class ImplementationGuidelines(BaseModel):
         default=False,
         description="I/O optimization may help for large token counts; dimension size alone does not make it mandatory",
     )
+    fast_io_required: bool = Field(
+        default=False,
+        description="Compatibility field: the heuristic cannot prove I/O optimization is mandatory; see fast_io_may_help and analysis caveats",
+    )
     overflow_risk: bool = False
     integer_types: str = "Choose integer width from proven input and accumulator bounds"
 
