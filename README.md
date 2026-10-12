@@ -82,3 +82,17 @@ Supply the archive root through --corpus-root or PROBLEM_DISSECTOR_CORPUS_ROOT. 
 Current archetype ranking uses keyword matches rather than semantic proof. Bounds parsing is best-effort and may not represent aggregate constraints such as sum(N), multi-dimensional complexity, or unusual statement formats accurately. Complexity estimates use a nominal rule of thumb and simplified memory assumptions. Outputs include warnings to make these limitations visible, but do not remove the need for manual review.
 
 Before using this as an autonomous coding-agent input, build and evaluate a manually reviewed benchmark corpus and measure classification, extraction, and unsupported-observation errors.
+
+## Evaluate against IEEE-Xtreme-Archive
+
+The public [IEEE-Xtreme-Archive](https://github.com/Aaradhya-Dev-Tamrakar/IEEE-Xtreme-Archive) contains 669 indexed task folders, 662 archived statements, and a catalog with five featured examples for each of ten archetypes. Keep that dataset in its own repository; this project reads it from a local checkout and does not copy task statements or solutions.
+
+~~~bash
+git clone https://github.com/Aaradhya-Dev-Tamrakar/IEEE-Xtreme-Archive.git ../IEEE-Xtreme-Archive
+python -m pip install -e ".[dev]"
+python scripts/evaluate_archive.py --corpus-root ../IEEE-Xtreme-Archive --output-dir outputs/archive-evaluation
+~~~
+
+For a quick smoke run, pass --limit 20. The evaluator writes summary.json, summary.md, and per_task.csv. It measures statement availability, constraint-bound extraction coverage, heading detection, and top-1/top-3 classifier ranking on the catalog's curated featured examples (normally 50 tasks).
+
+**Interpretation limit:** those 50 catalog labels are curated reference examples, not an independently reviewed label for every task. The full-corpus parser metrics are diagnostics, not proof that extracted bounds are correct. Review the per-task CSV and manually verify a larger stratified sample before using results as research claims.
