@@ -182,6 +182,7 @@ STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
         "flush": 4, "permutation construction": 5, "flip the prefix": 6,
         "output any": 3, "find any": 3,
         "representing the smallest and the largest terms": 4,
+        "write n as a sum": 4, "consecutive": 3,
     },
 }
 
