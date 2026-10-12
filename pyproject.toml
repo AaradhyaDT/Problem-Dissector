@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "problem-dissector"
-version = "0.2.0"
+version = "0.3.0"
 description = "Heuristic algorithmic problem dissection for competitive programming"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,9 +22,10 @@ dev = [
 
 [project.scripts]
 problem-dissector = "cli.dissect:main"
+problem-dissector-evaluate-archive = "scripts.evaluate_archive:main"
 
 [tool.setuptools]
-packages = ["dissector", "dissector.adapters", "cli"]
+packages = ["dissector", "dissector.adapters", "cli", "scripts"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

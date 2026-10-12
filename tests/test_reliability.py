@@ -31,6 +31,17 @@ $1 \leq M \leq 2 \cdot 10^5$
     assert parsed.target_complexity.estimated_operations_by_candidate["O(N^2)"] > parsed.target_complexity.max_operations
 
 
+def test_constraints_and_notes_heading_is_detected():
+    statements = [
+        "# Matrix\n### Restrictions and notes\n$1 \\leq N \\leq 1000$\n",
+        "# Addition\n### Constraints and notes\n$1 \\leq A \\leq 10^9$\n",
+    ]
+    for statement in statements:
+        parsed = analyze_constraints(statement)
+        assert not any("No dedicated Constraints/Restrictions heading" in warning for warning in parsed.warnings)
+        assert parsed.variables
+
+
 def test_thousands_separators_are_not_truncated():
     parsed = analyze_constraints(r"""# Sample
 ### Constraints

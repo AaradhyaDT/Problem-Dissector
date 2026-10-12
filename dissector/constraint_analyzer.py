@@ -122,8 +122,8 @@ def derive_admissible_complexity(
 
 def _constraints_section(statement_text: str) -> Tuple[str, bool]:
     section = re.search(
-        r"^\s*#{1,6}\s*(?:input\s+)?(?:constraints|restrictions)\s*:?\s*$"
-        r"\s*(.*?)(?=^\s*#{1,6}\s|\Z)",
+        r"^[ \t]*#{1,6}[ \t]*(?:input[ \t]+)?(?:constraints?|restrictions?)\b[^\r\n]*\r?\n"
+        r"(.*?)(?=^[ \t]*#{1,6}[ \t]|\Z)",
         statement_text,
         re.IGNORECASE | re.MULTILINE | re.DOTALL,
     )
