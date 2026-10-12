@@ -24,3 +24,35 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
       - name: Run tests
         run: python -m pytest -q
+
+  archive-evaluation:
+    name: Full archive evaluation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Problem-Dissector
+        uses: actions/checkout@v4
+      - name: Check out pinned IEEE-Xtreme-Archive snapshot
+        uses: actions/checkout@v4
+        with:
+          repository: Aaradhya-Dev-Tamrakar/IEEE-Xtreme-Archive
+          ref: 9838dbb01ee204d15d55aec55ee57e7a5247ce0c
+          path: reference-corpus
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: python -m pip install --upgrade pip && python -m pip install -e .
+      - name: Evaluate all archived statements and curated taxonomy examples
+        run: python scripts/evaluate_archive.py --corpus-root reference-corpus --output-dir outputs/archive-evaluation
+      - name: Print evaluation summary
+        run: cat outputs/archive-evaluation/summary.md
+      - name: Upload evaluation results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ieee-xtreme-archive-evaluation
+          path: outputs/archive-evaluation/
+          if-no-files-found: error
+          retention-days: 30
