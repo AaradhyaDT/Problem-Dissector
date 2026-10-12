@@ -16,7 +16,9 @@ ARCHETYPE_RULES: Dict[str, Dict] = {
             "subsequence", "maximum profit", "minimum cost", "ways to",
             "number of ways", "modulo 10^9+7", "modulo 1000000007",
             "knapsack", "partition", "longest", "optimal choice",
-            "recurrence", "state transition", "subproblem",
+            "recurrence", "state transition", "subproblem", "monotone",
+            "monotone subarray", "longest monotone subarray", "non-increasing",
+            "non-decreasing", "subarray",
         ],
         "paradigms": ["Linear DP", "Bitmask DP", "Tree DP", "Divide & Conquer DP", "Matrix Exponentiation"],
     },
@@ -28,7 +30,8 @@ ARCHETYPE_RULES: Dict[str, Dict] = {
             "network", "adjacency", "directed", "undirected", "tree of edges",
             "shortest route", "shortest routes", "shortest distance", "bfs", "dfs",
             "dijkstra", "reachable", "four directions", "up, down, left or right",
-            "adjacent", "adjacent cells", "cell", "cells", "path from every empty cell",
+            "adjacent", "adjacent cells", "cells are adjacent", "cell", "cells",
+            "path from every empty cell",
         ],
         "paradigms": ["BFS / 0-1 BFS", "Dijkstra", "Floyd-Warshall", "Tarjan SCC / Bridges", "Dinic Max Flow"],
     },
@@ -49,6 +52,8 @@ ARCHETYPE_RULES: Dict[str, Dict] = {
             "fenwick", "disjoint set", "dsu", "frequency", "frequencies",
             "count occurrences", "appear in the array", "at least k times",
             "segment tree", "range query", "range queries", "point updates",
+            "segments", "queries", "bitwise", "bitwise and", "dictionary",
+            "pagination", "page", "pages", "lexicographical order", "on what page",
         ],
         "paradigms": ["Segment Tree", "Fenwick (Binary Indexed) Tree", "Sparse Table", "Mo's Algorithm", "DSU"],
     },
@@ -70,6 +75,9 @@ ARCHETYPE_RULES: Dict[str, Dict] = {
             "lexicographically smallest", "monotonic", "binary search on answer",
             "minimum number", "maximum number", "minimum time",
             "minimum moment", "minimum moment in time", "selling", "sell",
+            "pair", "pairs", "left shoe", "right shoe", "same size",
+            "maximum number of pairs", "spend all the dollars", "spend all dollars",
+            "attack and speed at the same level", "same level",
         ],
         "paradigms": ["Greedy Exchange Arguments", "Two Pointers / Sliding Window", "Binary Search on Value Range", "Prefix Sums"],
     },
@@ -128,7 +136,7 @@ STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
     },
     "02": {
         "shortest path": 5, "shortest route": 5, "shortest routes": 5,
-        "shortest distance": 5, "adjacent cells": 4, "adjacent": 3,
+        "shortest distance": 5, "adjacent cells": 4, "cells are adjacent": 4,
         "path from every empty cell": 4,
         "connected component": 4, "bipartite": 4, "network flow": 5,
         "dijkstra": 5, "breadth first search": 5, "bfs": 3, "dfs": 3,
@@ -144,12 +152,14 @@ STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
         "segment tree": 6, "fenwick": 5, "range query": 5,
         "range queries": 5, "point update": 5, "range update": 5,
         "frequency": 3, "frequencies": 3, "count occurrences": 4,
-        "at least k times": 4, "dictionary": 3, "pagination": 4,
+        "at least k times": 4, "segments": 3, "nested inside": 4,
+        "seven-segment display": 5, "number of segments": 4,
+        "bitwise and": 5, "bitwise": 4, "dictionary": 3, "pagination": 4,
         "on what page": 4, "lexicographical order": 3,
     },
     "05": {
         "addition": 4, "sum of two integers": 6,
-        "compute and output their sum": 6, "prime": 4, "divisor": 3,
+        "compute and output their sum": 6, "divisible": 4, "prime": 4, "divisor": 3,
         "gcd": 4, "lcm": 4, "modular inverse": 5, "prime factorization": 6,
         "coprime": 4,
     },
@@ -157,7 +167,9 @@ STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
         "greedy": 6, "two pointers": 5, "sliding window": 5,
         "minimum number of bottles": 5, "minimum moment in time": 4,
         "minimum time": 3, "binary search on answer": 4,
-        "minimum operations": 3,
+        "minimum operations": 3, "maximum number of pairs": 5,
+        "spend all the dollars": 5, "spend all dollars": 5,
+        "attack and speed at the same level": 4, "same level": 3,
     },
     "07": {
         "convex hull": 6, "matrix rotations": 6, "rotate a matrix": 6,
@@ -171,7 +183,7 @@ STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
         "occurrence of": 3,
     },
     "09": {
-        "both play optimally": 6, "optimal play": 5,
+        "game": 3, "both play optimally": 6, "optimal play": 5,
         "take turns": 5, "takes turns": 5, "first player": 4,
         "game ends": 4, "nim": 5, "piles": 3, "stones": 3,
     },
@@ -220,9 +232,7 @@ def classify_archetypes(statement_text: str, top_k: int = 3) -> List[ArchetypeMa
                 strong_hits += 1
                 strongest_hit = max(strongest_hit, weight)
 
-        # A single generic mention (for example, "game" used as story context)
-        # is not enough evidence to nominate an archetype.
-        if score < 3 and strong_hits == 0:
+        if score <= 0:
             continue
 
         evidence.sort(key=lambda item: (-item[0], -len(item[1]), item[1]))
