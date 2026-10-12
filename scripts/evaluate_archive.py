@@ -34,14 +34,24 @@ TASK_LINK = re.compile(
 
 
 def parse_catalog_labels(catalog_text: str) -> Tuple[Dict[str, str], List[str]]:
-    """Extract curated slug -> archetype ID labels from catalog sections.
+    """Extract curated slug -> archetype ID labels from the catalog's featured-task section.
 
-    The catalog links representative tasks per archetype, not every task. If a
-    slug appears under multiple archetypes, it is marked ambiguous and excluded.
+    Only links inside section 3 (Algorithmic Archetype Profiles & Canonical Slugs)
+    are treated as labels. Later cross-references elsewhere in the catalog must not
+    silently inflate the benchmark or inherit the last archetype heading.
     """
+    taxonomy_section = re.search(
+        r"^##[ \t]+3\.[ \t]+Algorithmic Archetype Profiles[^\r\n]*\r?\n"
+        r"(.*?)(?=^##[ \t]+\d+\.[ \t]|\Z)",
+        catalog_text,
+        re.MULTILINE | re.DOTALL,
+    )
+    if not taxonomy_section:
+        return {}, []
+
     labels_by_slug: Dict[str, Set[str]] = defaultdict(set)
     current_id: Optional[str] = None
-    for line in catalog_text.splitlines():
+    for line in taxonomy_section.group(1).splitlines():
         heading = ARCHETYPE_HEADING.match(line)
         if heading:
             current_id = heading.group("id")
@@ -56,7 +66,6 @@ def parse_catalog_labels(catalog_text: str) -> Tuple[Dict[str, str], List[str]]:
         if len(ids) == 1
     }
     return labels, ambiguous
-
 
 def _rate(numerator: int, denominator: int) -> Optional[float]:
     return round(numerator / denominator, 4) if denominator else None
