@@ -6,6 +6,8 @@ from scripts.evaluate_archive import evaluate_archive, parse_catalog_labels
 def test_parse_catalog_labels_uses_archetype_sections_and_marks_ambiguity():
     catalog = """# Master Catalog
 
+## 3. Algorithmic Archetype Profiles & Canonical Slugs
+
 ### 01. [Dynamic Programming](01_dynamic_programming.md)
 - [dp-task](../platforms/csacademy/tasks/dp-task/statement.md)
 - [shared-task](../platforms/csacademy/tasks/shared-task/statement.md)
@@ -13,10 +15,15 @@ def test_parse_catalog_labels_uses_archetype_sections_and_marks_ambiguity():
 ### 02. [Graph Theory & Network Flows](02_graph.md)
 - [graph-task](../platforms/csacademy/tasks/graph-task/statement.md)
 - [shared-task](../platforms/csacademy/tasks/shared-task/statement.md)
+
+## 4. Other references
+### 10. Unrelated task references
+- [not-a-label](../platforms/csacademy/tasks/not-a-label/statement.md)
 """
     labels, ambiguous = parse_catalog_labels(catalog)
     assert labels == {"dp-task": "01", "graph-task": "02"}
     assert ambiguous == ["shared-task"]
+    assert "not-a-label" not in labels
 
 
 def test_evaluate_archive_reports_missing_statements_and_curated_scores(tmp_path: Path):
@@ -40,6 +47,7 @@ $1 \leq A \leq 100$
     )
     (tmp_path / "briefings").mkdir()
     (tmp_path / "briefings" / "catalog.md").write_text(
+        "## 3. Algorithmic Archetype Profiles & Canonical Slugs\n"
         "### 05. [Combinatorics & Number Theory](05.md)\n"
         "- [addition](../platforms/csacademy/tasks/addition/statement.md)\n",
         encoding="utf-8",
