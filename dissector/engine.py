@@ -150,7 +150,7 @@ def build_agent_contract(report: DissectionReport) -> AgentDissectionContract:
         if overflow_risk else
         "Choose integer width from proven input and accumulator bounds"
     )
-    fast_io = dominant_val >= 100000.0
+    fast_io_may_help = dominant_val >= 100000.0
 
     primary = report.archetypes[0] if report.archetypes else None
     arch_id = primary.archetype_id if primary else "00"
@@ -197,7 +197,7 @@ def build_agent_contract(report: DissectionReport) -> AgentDissectionContract:
         edge_case_checklist=[trap.description for trap in report.pitfalls_and_traps],
         guidelines=ImplementationGuidelines(
             recommended_language="C++20", data_structures=recommended_structures,
-            fast_io_required=fast_io, overflow_risk=overflow_risk, integer_types=integer_types,
+            fast_io_may_help=fast_io_may_help, overflow_risk=overflow_risk, integer_types=integer_types,
         ),
         analysis_caveats=caveats, agent_prompt_summary=prompt_summary,
     )

@@ -31,6 +31,18 @@ $1 \leq M \leq 2 \cdot 10^5$
     assert parsed.target_complexity.estimated_operations_by_candidate["O(N^2)"] > parsed.target_complexity.max_operations
 
 
+def test_thousands_separators_are_not_truncated():
+    parsed = analyze_constraints(r"""# Sample
+### Constraints
+N <= 1,000
+M <= 2\,000
+K <= 3 000
+""")
+    assert parsed.variables["N"] == 1000.0
+    assert parsed.variables["M"] == 2000.0
+    assert parsed.variables["K"] == 3000.0
+
+
 def test_aggregate_constraint_is_flagged():
     parsed = analyze_constraints("# Problem\n### Constraints\nThe sum of N over all test cases is at most 200000.")
     assert any("Aggregate/summation" in warning for warning in parsed.warnings)

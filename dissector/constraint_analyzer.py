@@ -141,7 +141,11 @@ def analyze_constraints(
     variables: Dict[str, float] = {}
 
     for line in raw_lines:
-        for match in _BOUND_RE.finditer(line):
+        # Normalize thousands separators before treating commas as clause separators.
+        # This handles both "1,000" and LaTeX's "1\,000".
+        normalized_line = line.replace(r"\,", "")
+        normalized_line = re.sub(r"(?<=\d),(?=\d{3}\b)", "", normalized_line)
+        for match in _BOUND_RE.finditer(normalized_line):
             name = match.group("var").strip()
             value = parse_numeric_val(match.group("bound"))
             if value > 0 and math.isfinite(value):
@@ -149,7 +153,7 @@ def analyze_constraints(
 
         for match in re.finditer(
             r"\b(?P<var>[A-Za-z][A-Za-z0-9_]*)\s+(?:is\s+)?at\s+most\s+"
-            r"(?P<bound>[\d\s,^.{}+\-]+)", line, re.IGNORECASE,
+            r"(?P<bound>[\d\s,^.{}+\-]+)", normalized_line, re.IGNORECASE,
         ):
             value = parse_numeric_val(match.group("bound"))
             if value > 0 and math.isfinite(value):

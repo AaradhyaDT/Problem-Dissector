@@ -14,7 +14,10 @@ class AsymptoticCeiling(BaseModel):
 class ImplementationGuidelines(BaseModel):
     recommended_language: str = "C++20"
     data_structures: List[str] = Field(default_factory=list)
-    fast_io_required: bool = False
+    fast_io_may_help: bool = Field(
+        default=False,
+        description="I/O optimization may help for large token counts; dimension size alone does not make it mandatory",
+    )
     overflow_risk: bool = False
     integer_types: str = "Choose integer width from proven input and accumulator bounds"
 

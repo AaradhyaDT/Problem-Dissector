@@ -46,7 +46,7 @@ Batch processing:
 python cli/dissect.py --corpus-root /path/to/IEEE-Xtreme-Archive --all --limit 10 --export
 ~~~
 
-The problem-dissector command is installed by pip install -e .. Outputs can be written as Markdown, a full JSON report, and a contract JSON file.
+The problem-dissector console command becomes available after running python -m pip install -e . Reports can be written as Markdown, a full JSON report, and a contract JSON file.
 
 ## Architecture
 
