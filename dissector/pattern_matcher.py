@@ -184,8 +184,8 @@ STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
 
 def _matches_keyword(keyword: str, text: str) -> bool:
     """Match a phrase across flexible whitespace while preserving word boundaries."""
-    escaped = re.escape(keyword).replace(r"\\ ", r"\\s+")
-    return re.search(r"\\b" + escaped + r"\\b", text, re.IGNORECASE) is not None
+    escaped = re.escape(keyword).replace(r"\ ", r"\s+")
+    return re.search(r"\b" + escaped + r"\b", text, re.IGNORECASE) is not None
 
 
 def classify_archetypes(statement_text: str, top_k: int = 3) -> List[ArchetypeMatch]:
@@ -193,7 +193,7 @@ def classify_archetypes(statement_text: str, top_k: int = 3) -> List[ArchetypeMa
     if top_k <= 0:
         return []
 
-    text = re.sub(r"\\s+", " ", statement_text or "").lower()
+    text = re.sub(r"\s+", " ", statement_text or "").lower()
     ranked: List[Tuple[float, int, float, int, ArchetypeMatch]] = []
 
     for order, (arch_id, data) in enumerate(ARCHETYPE_RULES.items()):
