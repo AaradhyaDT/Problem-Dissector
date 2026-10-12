@@ -183,7 +183,7 @@ STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
         "occurrence of": 3,
     },
     "09": {
-        "game": 3, "both play optimally": 6, "optimal play": 5,
+        "both play optimally": 6, "optimal play": 5,
         "take turns": 5, "takes turns": 5, "first player": 4,
         "game ends": 4, "nim": 5, "piles": 3, "stones": 3,
     },
