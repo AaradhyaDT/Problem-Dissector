@@ -61,3 +61,32 @@ $1 \leq M \leq 10^5$
     assert "O(N log N)" in report.constraints.target_complexity.admissible_time_complexity
     assert len(report.archetypes) > 0
     assert len(report.pitfalls_and_traps) > 0
+
+
+def test_build_agent_contract():
+    from dissector.engine import build_agent_contract
+    from dissector.contract import AgentDissectionContract
+
+    mock_prob = RawProblemData(
+        slug="grid_task",
+        title="Grid Task",
+        statement_markdown=r"""# Grid Task
+You are given a grid of $N \times M$. Find shortest path between cells.
+### Constraints
+$1 \leq N \leq 1000$
+$1 \leq M \leq 1000$
+""",
+        time_limit_str="1000 ms",
+        memory_limit_str="256 MB"
+    )
+
+    report = dissect_problem(mock_prob)
+    contract = build_agent_contract(report)
+
+    assert isinstance(contract, AgentDissectionContract)
+    assert contract.task_slug == "grid_task"
+    assert contract.asymptotics.time_complexity == "O(N^2)"
+    assert contract.guidelines.recommended_language == "C++20"
+    assert "queue" in " ".join(contract.guidelines.data_structures).lower()
+    assert len(contract.forbidden_approaches) > 0
+    assert "Implement in C++20" in contract.agent_prompt_summary

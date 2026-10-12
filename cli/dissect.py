@@ -24,7 +24,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from dissector.adapters.ieee_xtreme import IEEEXtremeAdapter
-from dissector.engine import dissect_problem
+from dissector.engine import dissect_problem, build_agent_contract
 from dissector.models import DissectionReport
 
 
@@ -90,9 +90,12 @@ def render_report_markdown(report: DissectionReport) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Algorithmic Problem Dissector CLI")
     parser.add_argument("--slug", help="Task slug to dissect (e.g. matrix_exploration, 0-k-multiple)")
-    parser.add_argument("--export", action="store_true", help="Export report to outputs/<slug>.md and outputs/<slug>.json")
-    parser.add_argument("--all", action="store_true", help="Batch dissect all tasks in corpus")
+    parser.add_argument("--contract", action="store_true", help="Emit high-density Agent Dissection Contract (JSON or file)")
+    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of ANSI formatted text")
+    parser.add_argument("--export", action="store_true", help="Export report and contract to outputs/<slug>.*")
+    parser.add_argument("--all", action="store_true", help="Batch dissect tasks in corpus")
     parser.add_argument("--limit", type=int, default=10, help="Limit when running with --all")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Suppress decorative banners for scripting")
 
     args = parser.parse_args()
 
@@ -105,26 +108,46 @@ def main():
             sys.exit(1)
 
         report = dissect_problem(problem)
+        contract = build_agent_contract(report)
+
+        if args.contract:
+            contract_json = contract.model_dump_json(indent=2)
+            if args.export:
+                out_dir = REPO_ROOT / "outputs" / "contracts"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                contract_path = out_dir / f"{report.slug}.contract.json"
+                contract_path.write_text(contract_json, encoding="utf-8")
+                if not args.quiet:
+                    print(f"{Colors.GREEN}✓ Exported Contract to: {contract_path}{Colors.RESET}")
+            else:
+                print(contract_json)
+            return
+
+        if args.json:
+            print(report.model_dump_json(indent=2))
+            return
+
         rendered_md = render_report_markdown(report)
 
-        print(f"\n{Colors.BOLD}{Colors.CYAN}======================================================================{Colors.RESET}")
-        print(f"{Colors.BOLD}{Colors.CYAN}🧠 PROBLEM DISSECTOR: {report.title} ({report.slug}){Colors.RESET}")
-        print(f"{Colors.BOLD}{Colors.CYAN}======================================================================{Colors.RESET}\n")
+        if not args.quiet:
+            print(f"\n{Colors.BOLD}{Colors.CYAN}======================================================================{Colors.RESET}")
+            print(f"{Colors.BOLD}{Colors.CYAN}🧠 PROBLEM DISSECTOR: {report.title} ({report.slug}){Colors.RESET}")
+            print(f"{Colors.BOLD}{Colors.CYAN}======================================================================{Colors.RESET}\n")
 
-        # Constraints overview
-        comp = report.constraints.target_complexity
-        print(f"{Colors.BOLD}Admissible Time:{Colors.RESET}   {Colors.GREEN}{comp.admissible_time_complexity if comp else 'N/A'}{Colors.RESET}")
-        print(f"{Colors.BOLD}Admissible Space:{Colors.RESET}  {Colors.GREEN}{comp.admissible_space_complexity if comp else 'N/A'}{Colors.RESET}")
-        print(f"{Colors.BOLD}Primary Archetype:{Colors.RESET} {Colors.YELLOW}{report.archetypes[0].name if report.archetypes else 'Unknown'}{Colors.RESET}")
-        print(f"{Colors.BOLD}Rationale:{Colors.RESET}         {comp.explanation if comp else 'N/A'}\n")
+            # Constraints overview
+            comp = report.constraints.target_complexity
+            print(f"{Colors.BOLD}Admissible Time:{Colors.RESET}   {Colors.GREEN}{comp.admissible_time_complexity if comp else 'N/A'}{Colors.RESET}")
+            print(f"{Colors.BOLD}Admissible Space:{Colors.RESET}  {Colors.GREEN}{comp.admissible_space_complexity if comp else 'N/A'}{Colors.RESET}")
+            print(f"{Colors.BOLD}Primary Archetype:{Colors.RESET} {Colors.YELLOW}{report.archetypes[0].name if report.archetypes else 'Unknown'}{Colors.RESET}")
+            print(f"{Colors.BOLD}Rationale:{Colors.RESET}         {comp.explanation if comp else 'N/A'}\n")
 
-        print(f"{Colors.BOLD}Key Observations:{Colors.RESET}")
-        for obs in report.key_observations:
-            print(f"  • {obs}")
+            print(f"{Colors.BOLD}Key Observations:{Colors.RESET}")
+            for obs in report.key_observations:
+                print(f"  • {obs}")
 
-        print(f"\n{Colors.BOLD}Traps & Edge Cases:{Colors.RESET}")
-        for t in report.pitfalls_and_traps:
-            print(f"  ⚠️  [{Colors.RED}{t.category}{Colors.RESET}] {t.description}")
+            print(f"\n{Colors.BOLD}Traps & Edge Cases:{Colors.RESET}")
+            for t in report.pitfalls_and_traps:
+                print(f"  ⚠️  [{Colors.RED}{t.category}{Colors.RESET}] {t.description}")
 
         if args.export:
             out_dir = REPO_ROOT / "outputs"
@@ -135,25 +158,39 @@ def main():
             md_path.write_text(rendered_md, encoding="utf-8")
             json_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
 
-            print(f"\n{Colors.GREEN}✓ Exported Dissection Report to:{Colors.RESET}")
-            print(f"  Markdown: {md_path}")
-            print(f"  JSON:     {json_path}")
+            # Also export contract
+            contracts_dir = out_dir / "contracts"
+            contracts_dir.mkdir(exist_ok=True)
+            (contracts_dir / f"{report.slug}.contract.json").write_text(contract.model_dump_json(indent=2), encoding="utf-8")
+
+            if not args.quiet:
+                print(f"\n{Colors.GREEN}✓ Exported Dissection Report & Agent Contract to:{Colors.RESET}")
+                print(f"  Markdown: {md_path}")
+                print(f"  JSON:     {json_path}")
+                print(f"  Contract: {contracts_dir / f'{report.slug}.contract.json'}")
 
     elif args.all:
         slugs = adapter.list_slugs()[:args.limit]
-        print(f"{Colors.CYAN}Dissecting {len(slugs)} tasks...{Colors.RESET}")
+        if not args.quiet:
+            print(f"{Colors.CYAN}Dissecting {len(slugs)} tasks...{Colors.RESET}")
         out_dir = REPO_ROOT / "outputs"
+        contracts_dir = out_dir / "contracts"
         out_dir.mkdir(exist_ok=True)
+        contracts_dir.mkdir(exist_ok=True)
 
         for s in slugs:
             prob = adapter.load_problem(s)
             if prob:
                 rep = dissect_problem(prob)
+                contract = build_agent_contract(rep)
                 md = render_report_markdown(rep)
                 (out_dir / f"{rep.slug}.md").write_text(md, encoding="utf-8")
-                print(f"  ✓ Processed: {rep.slug:<28} -> {rep.archetypes[0].name if rep.archetypes else 'General'}")
+                (contracts_dir / f"{rep.slug}.contract.json").write_text(contract.model_dump_json(indent=2), encoding="utf-8")
+                if not args.quiet:
+                    print(f"  ✓ Processed: {rep.slug:<28} -> {rep.archetypes[0].name if rep.archetypes else 'General'}")
 
-        print(f"\n{Colors.GREEN}✓ Batch dissection completed! Saved to {out_dir}{Colors.RESET}")
+        if not args.quiet:
+            print(f"\n{Colors.GREEN}✓ Batch dissection completed! Saved to {out_dir}{Colors.RESET}")
     else:
         parser.print_help()
 
