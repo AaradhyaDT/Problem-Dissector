@@ -2,6 +2,7 @@ import re
 from typing import List
 from dissector.adapters.base import RawProblemData
 from dissector.constraint_analyzer import analyze_constraints
+from dissector.contract import AgentDissectionContract, AsymptoticCeiling, ImplementationGuidelines
 from dissector.models import DissectionReport, EdgeCaseTrap
 from dissector.pattern_matcher import classify_archetypes
 
@@ -123,3 +124,92 @@ def dissect_problem(problem: RawProblemData) -> DissectionReport:
         pitfalls_and_traps=traps,
         source_url=problem.source_url
     )
+
+
+def build_agent_contract(report: DissectionReport) -> AgentDissectionContract:
+    """Transform a full dissection report into a concise cognitive contract for downstream agents."""
+    comp = report.constraints.target_complexity
+    time_bound = comp.admissible_time_complexity if comp else "O(N log N)"
+    space_bound = comp.admissible_space_complexity if comp else "O(N)"
+    ops_budget = comp.max_operations if comp else int(1e8)
+
+    dominant_var = "N"
+    dominant_val = 100000.0
+    if report.constraints.variables:
+        for k in ["N", "n", "M", "m", "K", "k"]:
+            if k in report.constraints.variables:
+                dominant_var = k
+                dominant_val = report.constraints.variables[k]
+                break
+
+    # Determine integer width and fast I/O
+    overflow_risk = any(t.category == "Integer Overflow" for t in report.pitfalls_and_traps)
+    int_types = "long long / int64_t" if overflow_risk else "int (32-bit)"
+    fast_io = dominant_val >= 100000.0 or any(t.category == "I/O Bottleneck (TLE)" for t in report.pitfalls_and_traps)
+
+    # Data structures selection based on archetype
+    primary_arch = report.archetypes[0] if report.archetypes else None
+    arch_id = primary_arch.archetype_id if primary_arch else "00"
+    arch_name = primary_arch.name if primary_arch else "General Algorithmic"
+
+    ds_map = {
+        "01": ["std::vector (1D/2D DP table)", "std::array"],
+        "02": ["std::vector<std::vector<int>> (Adjacency list)", "std::queue (BFS)", "std::priority_queue (Dijkstra)"],
+        "03": ["std::vector<std::vector<int>> (Tree Adj)", "int up[N][20] (Binary lifting table)"],
+        "04": ["Segment Tree / Fenwick Tree (BIT)", "Disjoint Set Union (DSU)"],
+        "05": ["Sieve vector<bool>", "Modular arithmetic functions"],
+        "06": ["std::vector with std::sort", "Two pointers indices", "std::deque"],
+        "07": ["struct Point { long long x, y; }", "std::vector<Point>"],
+        "08": ["std::string", "std::vector<int> (Prefix/Z table)", "Trie Node struct"],
+        "09": ["int grundy[MAX]", "Memoization cache"],
+        "10": ["Query response loop with std::flush / cout << endl"],
+    }
+    rec_ds = ds_map.get(arch_id, ["std::vector", "std::unordered_map"])
+
+    # Forbidden approaches based on Big-O
+    forbidden = []
+    if "O(N log N)" in time_bound or "O(N)" in time_bound:
+        forbidden.append(f"Nested O({dominant_var}^2) iterations — will exceed judge operations budget ({ops_budget:.1e}) and trigger TLE.")
+    if overflow_risk:
+        forbidden.append("Using signed 32-bit int for accumulated sums/products — triggers silent integer overflow.")
+    forbidden.append("Unbuffered slow standard I/O streams without fast I/O optimization.")
+
+    # Edge cases
+    edge_cases = [t.description for t in report.pitfalls_and_traps]
+
+    prompt_summary = (
+        f"Implement in C++20 with {time_bound} time and {space_bound} space complexity. "
+        f"Archetype: {arch_name}. Integer types: {int_types}. "
+        f"Ensure fast I/O is enabled and avoid {', '.join(forbidden[:1])}."
+    )
+
+    asymptotics = AsymptoticCeiling(
+        time_complexity=time_bound,
+        space_complexity=space_bound,
+        ops_budget=ops_budget,
+        dominant_dimension=f"{dominant_var} <= {int(dominant_val)}"
+    )
+
+    guidelines = ImplementationGuidelines(
+        recommended_language="C++20",
+        data_structures=rec_ds,
+        fast_io_required=fast_io,
+        overflow_risk=overflow_risk,
+        integer_types=int_types
+    )
+
+    return AgentDissectionContract(
+        task_slug=report.slug,
+        title=report.title,
+        platform=report.platform,
+        difficulty=str(report.difficulty),
+        asymptotics=asymptotics,
+        archetype_id=arch_id,
+        archetype_name=arch_name,
+        core_invariants=report.key_observations,
+        forbidden_approaches=forbidden,
+        edge_case_checklist=edge_cases,
+        guidelines=guidelines,
+        agent_prompt_summary=prompt_summary
+    )
+
