@@ -1,92 +1,68 @@
 ---
 name: problem-dissector
-description: >-
-  Algorithmic Problem Dissector & Cognitive Deconstruction Engine for Competitive Programming.
-  Parses raw problem statements into structured Agent Dissection Contracts (asymptotics, Big-O bounds,
-  mathematical invariants, algorithmic archetypes, forbidden patterns, and edge-case checklists).
-  Operates headlessly via CLI background tasks to feed downstream coding agents without context pollution.
+description: Analyze competitive programming statements locally into advisory dissection contracts with parsed bounds, candidate algorithm families and edge-case warnings. Use for offline task triage before solver reasoning.
 ---
 
 # Problem Dissector Skill (`problem-dissector`)
 
-High-leverage cognitive router and problem deconstruction engine operating inside [`F:\Aaradhya-Dev-Tamrakar\Problem-Dissector`](file:///F:/Aaradhya-Dev-Tamrakar/Problem-Dissector).
+Run these commands from the Problem-Dissector repository root. Supply the actual archive root explicitly; examples assume a sibling `Competitive-Programming` checkout. No network or model calls are needed for dissection.
 
-Deconstructs raw competitive programming problem statements into structured **Agent Dissection Contracts** so coding agents (Fleet workers, Copilot, LLMs) receive razor-sharp cognitive anchors rather than struggling with raw 3-page problem statements.
+For the full statement-ingestion, source-preservation, sample-extraction and verified-cache workflow, use the installed sibling skill `ieee-xtreme-preflight`, maintained in `Competitive-Programming/skills/ieee-xtreme-preflight`. Its packet builder keeps the original statement authoritative and limits solver context to one selected task.
 
 ---
 
 ## 1. Core Operating Principles
 
-1. **Deconstruction Over Solving**: Do not write the full solution code. Produce the deterministic contract specifying Big-O ceilings, invariants, edge cases, and forbidden pitfalls.
-2. **Deterministic Fast Path (<20ms)**: Derives asymptotic bounds purely through mathematical constraint analysis ($N \leq 10^5 \implies O(N \log N)$), costing $0.00 and avoiding LLM latency.
-3. **Context Firebreak (`INV-CTX-FIREBREAK`)**: When called by subagents or swarms, run as an Antigravity background task to keep main orchestrator contexts lean.
+1. **Analyze without solving**: Produce advisory hypotheses without solution code. Parsed values and keyword matches do not establish an algorithm or its proof.
+2. **Preserve source evidence**: Keep complete semantics, multidimensional bounds, sums across test cases, subtasks, numeric ranges and interaction rules. The largest numeric bound can understate a product such as `N*M`.
+3. **Keep context bounded**: Read the selected task's output rather than batch statements or full archive logs. Batch processing and worker dispatch require a request for that scope.
 
 ---
 
 ## 2. CLI Execution Modes
 
-Working directory: `F:\Aaradhya-Dev-Tamrakar\Problem-Dissector`
+The raw CLI can substitute 1000 ms and 256 MB for missing limits. Treat absent limits as unknown; verify source limits before relying on any complexity guidance. The preflight wrapper skips analysis when explicit limits are missing, conflicting or unsupported.
 
 ### Mode A: Emit Pure Agent Contract (JSON to stdout or Pipe)
 ```powershell
-python cli/dissect.py --slug matrix_exploration --contract
+python cli/dissect.py --corpus-root ../Competitive-Programming --slug matrix_exploration --contract --quiet
 ```
 
-### Mode B: Full Problem Dissection (Interactive Terminal Card)
+### Mode B: Full heuristic report
 ```powershell
-python cli/dissect.py --slug 0-k-multiple
+python cli/dissect.py --corpus-root ../Competitive-Programming --slug 0-k-multiple
 ```
 
 ### Mode C: Export Artifacts (Markdown + JSON + Contract)
 Exports to `outputs/<slug>.md`, `outputs/<slug>.json`, and `outputs/contracts/<slug>.contract.json`:
 ```powershell
-python cli/dissect.py --slug matrix_exploration --export
+python cli/dissect.py --corpus-root ../Competitive-Programming --slug matrix_exploration --export
 ```
 
-### Mode D: Batch Dissection Background Daemon (Antigravity Task)
-Pre-dissects $N$ tasks in the background without blocking execution:
+`--contract --export` exports only the contract. `--export` without `--contract` exports all three artifacts. `--output-dir` selects an explicit artifact location.
+
+### Mode D: Bounded batch dissection
+This is a finite command, not a daemon. Use only when a batch is requested:
 ```powershell
-python cli/dissect.py --all --limit 50 --quiet
+python cli/dissect.py --corpus-root ../Competitive-Programming --all --limit 50 --quiet
 ```
 
 ---
 
 ## 3. Contract Schema & Downstream Consumption
 
-The downstream agent receives an `AgentDissectionContract`:
-```json
-{
-  "task_slug": "matrix_exploration",
-  "asymptotics": {
-    "time_complexity": "O(N^2)",
-    "space_complexity": "O(N^2) or O(N)",
-    "ops_budget": 100000000,
-    "dominant_dimension": "N <= 1000"
-  },
-  "archetype_id": "02",
-  "archetype_name": "Graph Theory & Network Flows",
-  "core_invariants": [
-    "State can be modeled as implicit 2D/3D graph where transitions are restricted to 4 or 8 neighboring cells."
-  ],
-  "forbidden_approaches": [
-    "Using signed 32-bit int for accumulated sums/products — triggers silent integer overflow.",
-    "Unbuffered slow standard I/O streams without fast I/O optimization."
-  ],
-  "guidelines": {
-    "recommended_language": "C++20",
-    "data_structures": ["std::vector<std::vector<int>> (Adjacency list)", "std::queue (BFS)"],
-    "overflow_risk": true,
-    "integer_types": "long long / int64_t"
-  },
-  "agent_prompt_summary": "Implement in C++20 with O(N^2) time and O(N^2) or O(N) space complexity..."
-}
+Inspect the actual emitted JSON rather than assuming a legacy example schema. Operation budgets and complexity ceilings are rules of thumb. Archetype scores are keyword evidence, not calibrated probabilities. The legacy `core_invariants` field can contain candidate observations and must not be treated as a proof.
+
+Standalone source supports explicit limits without requiring an archive:
+
+```powershell
+python cli/dissect.py --statement-file statement.md --platform custom --time-limit "1000 ms" --memory-limit "128 MB" --contract --quiet
 ```
+
+Preserve the original statement and provenance next to the advisory contract. Resolve extraction gaps before choosing an algorithm. For live contests, establish the task's AI policy before exposing its statement to an agent.
 
 ---
 
 ## 4. Integration with Fleet-Orchestrator
 
-When dispatching tasks to `Fleet-Orchestrator` workers:
-1. Orchestrator invokes `python cli/dissect.py --slug <slug> --contract > contract.json`.
-2. Worker receives the `contract.json` payload inside its isolated `.worktrees/<task_id>` folder.
-3. Worker writes code adhering strictly to `asymptotics` and `guidelines`.
+When a user requests solver dispatch, give the worker only the selected task packet and advisory contract. Capture JSON as UTF-8 rather than relying on shell-dependent redirection encoding. The worker verifies complete semantics and bounds, derives an approach and proof, then implements and tests. Dissection does not authorize dispatch, solution assembly or submission on its own.

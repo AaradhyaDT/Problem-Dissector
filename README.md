@@ -85,12 +85,14 @@ Before using this as an autonomous coding-agent input, build and evaluate a manu
 
 ## Evaluate against IEEE-Xtreme-Archive
 
-The public [IEEE-Xtreme-Archive](https://github.com/Aaradhya-Dev-Tamrakar/IEEE-Xtreme-Archive) contains 669 indexed task folders, 662 archived statements, and a catalog with five featured examples for each of ten archetypes. Keep that dataset in its own repository; this project reads it from a local checkout and does not copy task statements or solutions.
+The reference corpus is maintained separately in Competitive-Programming (formerly IEEE-Xtreme-Archive). Access is controlled; use an authorized local checkout. Keep that dataset in its own repository: this project reads it locally and does not copy task statements or solutions. Historical inventory counts are not a guarantee of the current checkout's contents.
+
+Public CI runs the self-contained regression suite on Python 3.10, 3.11 and 3.12. Full-archive evaluation runs locally because the corpus is private; it is not reported as a public CI pass.
 
 ~~~bash
 git clone https://github.com/Aaradhya-Dev-Tamrakar/IEEE-Xtreme-Archive.git ../IEEE-Xtreme-Archive
 python -m pip install -e ".[dev]"
-python scripts/evaluate_archive.py --corpus-root ../IEEE-Xtreme-Archive --output-dir outputs/archive-evaluation
+python scripts/evaluate_archive.py --corpus-root ../Competitive-Programming --output-dir outputs/archive-evaluation
 ~~~
 
 For a quick smoke run, pass --limit 20. The evaluator writes summary.json, summary.md, and per_task.csv. It measures statement availability, constraint-bound extraction coverage, heading detection, and top-1/top-3 classifier ranking on the catalog's curated featured examples (normally 50 tasks).
