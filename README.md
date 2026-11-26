@@ -1,5 +1,7 @@
 # Problem Dissector
 
+<img src="assets/logo.png" alt="Problem Dissector logo" width="180">
+
 A Python tool that performs a best-effort first pass over competitive-programming problem statements. It extracts likely numeric bounds, ranks algorithmic archetypes from keyword evidence, and emits a structured report and downstream-agent contract.
 
 ## What it does (and does not do)
