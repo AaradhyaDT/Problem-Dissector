@@ -1,7 +1,6 @@
 """Best-effort constraint extraction and conservative complexity estimates."""
 import math
 import re
-from typing import Dict, List, Tuple
 
 from dissector.models import ComplexityTarget, ParsedConstraints
 
@@ -57,7 +56,7 @@ def _capped(value: int) -> int:
     return min(max(0, int(value)), _ESTIMATE_CAP)
 
 
-def _operation_estimates(n: int) -> Dict[str, int]:
+def _operation_estimates(n: int) -> dict[str, int]:
     """Return rough operation proxies, capped to keep numbers manageable."""
     n = max(1, int(n))
     log_n = max(1, math.ceil(math.log2(max(2, n))))
@@ -81,7 +80,7 @@ def derive_admissible_complexity(
 ) -> ComplexityTarget:
     """Return a rough single-dimension complexity ceiling, not a solution recommendation."""
     finite_n = max_n if math.isfinite(max_n) else 100000.0
-    n = max(1, int(math.ceil(finite_n)))
+    n = max(1, math.ceil(finite_n))
     time_ms = max(1, int(time_limit_ms))
     memory_mb = max(1, int(memory_limit_mb))
     operation_budget = max(1, int(1e8 * (time_ms / 1000.0)))
@@ -120,7 +119,7 @@ def derive_admissible_complexity(
     )
 
 
-def _constraints_section(statement_text: str) -> Tuple[str, bool]:
+def _constraints_section(statement_text: str) -> tuple[str, bool]:
     section = re.search(
         r"^[ \t]*#{1,6}[ \t]*(?:input[ \t]+)?(?:constraints?|restrictions?)\b[^\r\n]*\r?\n"
         r"(.*?)(?=^[ \t]*#{1,6}[ \t]|\Z)",
@@ -138,7 +137,7 @@ def analyze_constraints(
     """Extract upper bounds and attach warnings whenever the inference is incomplete."""
     constraints_section, has_heading = _constraints_section(statement_text)
     raw_lines = [line.strip() for line in constraints_section.splitlines() if line.strip()]
-    variables: Dict[str, float] = {}
+    variables: dict[str, float] = {}
 
     for line in raw_lines:
         # Normalize thousands separators before treating commas as clause separators.
@@ -160,7 +159,7 @@ def analyze_constraints(
                 name = match.group("var")
                 variables[name] = max(variables.get(name, 0.0), value)
 
-    warnings: List[str] = []
+    warnings: list[str] = []
     if not has_heading:
         warnings.append("No dedicated Constraints/Restrictions heading was found; extraction used the full statement.")
     if not variables:

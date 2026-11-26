@@ -1,5 +1,4 @@
 """Stable, typed payload for downstream coding agents."""
-from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -13,7 +12,7 @@ class AsymptoticCeiling(BaseModel):
 
 class ImplementationGuidelines(BaseModel):
     recommended_language: str = "C++20"
-    data_structures: List[str] = Field(default_factory=list)
+    data_structures: list[str] = Field(default_factory=list)
     fast_io_may_help: bool = Field(
         default=False,
         description="I/O optimization may help for large token counts; dimension size alone does not make it mandatory",
@@ -36,9 +35,9 @@ class AgentDissectionContract(BaseModel):
     asymptotics: AsymptoticCeiling
     archetype_id: str
     archetype_name: str
-    core_invariants: List[str] = Field(default_factory=list)
-    forbidden_approaches: List[str] = Field(default_factory=list)
-    edge_case_checklist: List[str] = Field(default_factory=list)
+    core_invariants: list[str] = Field(default_factory=list)
+    forbidden_approaches: list[str] = Field(default_factory=list)
+    edge_case_checklist: list[str] = Field(default_factory=list)
     guidelines: ImplementationGuidelines
-    analysis_caveats: List[str] = Field(default_factory=list)
+    analysis_caveats: list[str] = Field(default_factory=list)
     agent_prompt_summary: str = Field(..., description="Instruction preserving uncertainty and verification requirements")

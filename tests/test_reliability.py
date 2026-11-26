@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from dissector.adapters.ieee_xtreme import IEEEXtremeAdapter
 from dissector.adapters.base import RawProblemData
+from dissector.adapters.ieee_xtreme import IEEEXtremeAdapter
 from dissector.constraint_analyzer import analyze_constraints, parse_numeric_val
 from dissector.engine import derive_observations
 

@@ -4,8 +4,8 @@ import argparse
 import os
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 if hasattr(sys.stdout, "reconfigure"):
     try:

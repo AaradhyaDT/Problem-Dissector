@@ -1,6 +1,5 @@
 """Typed output models for reports and downstream contracts."""
 from enum import Enum
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,17 +17,17 @@ class ComplexityTarget(BaseModel):
     admissible_time_complexity: str = Field(description="Heuristic complexity ceiling, not a proven algorithm requirement")
     admissible_space_complexity: str = Field(description="Rough memory guidance, not a proven space requirement")
     explanation: str
-    estimated_operations_by_candidate: Dict[str, int] = Field(default_factory=dict)
-    warnings: List[str] = Field(default_factory=list)
+    estimated_operations_by_candidate: dict[str, int] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ParsedConstraints(BaseModel):
-    variables: Dict[str, float] = Field(default_factory=dict, description="Best-effort upper bounds, e.g. N: 100000")
-    raw_constraints: List[str] = Field(default_factory=list)
+    variables: dict[str, float] = Field(default_factory=dict, description="Best-effort upper bounds, e.g. N: 100000")
+    raw_constraints: list[str] = Field(default_factory=list)
     time_limit_ms: int = 1000
     memory_limit_mb: int = 256
-    target_complexity: Optional[ComplexityTarget] = None
-    warnings: List[str] = Field(default_factory=list)
+    target_complexity: ComplexityTarget | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ArchetypeMatch(BaseModel):
@@ -39,8 +38,8 @@ class ArchetypeMatch(BaseModel):
         default="heuristic_keyword_match_not_probability",
         description="Keyword evidence score, not a probability",
     )
-    matched_keywords: List[str] = Field(default_factory=list)
-    recommended_paradigms: List[str] = Field(default_factory=list)
+    matched_keywords: list[str] = Field(default_factory=list)
+    recommended_paradigms: list[str] = Field(default_factory=list)
 
 
 class EdgeCaseTrap(BaseModel):
@@ -55,8 +54,8 @@ class DissectionReport(BaseModel):
     platform: str = "csacademy"
     difficulty: DifficultyTier = DifficultyTier.UNKNOWN
     constraints: ParsedConstraints
-    archetypes: List[ArchetypeMatch]
-    key_observations: List[str] = Field(default_factory=list)
+    archetypes: list[ArchetypeMatch]
+    key_observations: list[str] = Field(default_factory=list)
     solution_blueprint: str
-    pitfalls_and_traps: List[EdgeCaseTrap] = Field(default_factory=list)
-    source_url: Optional[str] = None
+    pitfalls_and_traps: list[EdgeCaseTrap] = Field(default_factory=list)
+    source_url: str | None = None

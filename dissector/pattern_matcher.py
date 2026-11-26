@@ -4,12 +4,10 @@ Scores are heuristic evidence totals, not calibrated probabilities. More specifi
 problem signals outweigh generic objective words such as "maximize" or "edges".
 """
 import re
-from typing import Dict, List, Tuple
 
 from dissector.models import ArchetypeMatch
 
-
-ARCHETYPE_RULES: Dict[str, Dict] = {
+ARCHETYPE_RULES: dict[str, dict] = {
     "01": {
         "name": "Dynamic Programming",
         "keywords": [
@@ -127,7 +125,7 @@ ARCHETYPE_RULES: Dict[str, Dict] = {
 
 # These are deliberately strong, high-signal clues. Other listed keywords provide
 # weak support only. This keeps generic words from dominating domain-specific clues.
-STRONG_KEYWORD_WEIGHTS: Dict[str, Dict[str, int]] = {
+STRONG_KEYWORD_WEIGHTS: dict[str, dict[str, int]] = {
     "01": {
         "dynamic programming": 6, "state transition": 5, "recurrence": 4,
         "subproblem": 4, "subsequence": 4, "maximum profit": 4,
@@ -205,18 +203,18 @@ def _matches_keyword(keyword: str, text: str) -> bool:
     return re.search(r"\b" + escaped + r"\b", text, re.IGNORECASE) is not None
 
 
-def classify_archetypes(statement_text: str, top_k: int = 3) -> List[ArchetypeMatch]:
+def classify_archetypes(statement_text: str, top_k: int = 3) -> list[ArchetypeMatch]:
     """Rank hypotheses by weighted keyword evidence; scores are not probabilities."""
     if top_k <= 0:
         return []
 
     text = re.sub(r"\s+", " ", statement_text or "").lower()
-    ranked: List[Tuple[float, int, float, int, ArchetypeMatch]] = []
+    ranked: list[tuple[float, int, float, int, ArchetypeMatch]] = []
 
     for order, (arch_id, data) in enumerate(ARCHETYPE_RULES.items()):
         strong_weights = STRONG_KEYWORD_WEIGHTS.get(arch_id, {})
         all_keywords = list(dict.fromkeys(list(data["keywords"]) + list(strong_weights)))
-        evidence: List[Tuple[int, str]] = []
+        evidence: list[tuple[int, str]] = []
         score = 0.0
         strong_hits = 0
         strongest_hit = 0

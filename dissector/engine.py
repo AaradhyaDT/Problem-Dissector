@@ -1,10 +1,13 @@
 """Problem dissection pipeline; hypotheses must not be mistaken for proofs."""
 import re
-from typing import List
 
 from dissector.adapters.base import RawProblemData
 from dissector.constraint_analyzer import analyze_constraints
-from dissector.contract import AgentDissectionContract, AsymptoticCeiling, ImplementationGuidelines
+from dissector.contract import (
+    AgentDissectionContract,
+    AsymptoticCeiling,
+    ImplementationGuidelines,
+)
 from dissector.models import DissectionReport, EdgeCaseTrap
 from dissector.pattern_matcher import classify_archetypes
 
@@ -25,9 +28,9 @@ def parse_memory_mb(limit_str: str) -> int:
     return max(1, int(float(match.group(1)))) if match else 256
 
 
-def derive_observations(problem: RawProblemData, archetypes) -> List[str]:
+def derive_observations(problem: RawProblemData, archetypes) -> list[str]:
     """Return qualified clues rather than asserting unproven invariants."""
-    observations: List[str] = []
+    observations: list[str] = []
     text = problem.statement_markdown.lower()
 
     if re.search(r"\bpalindrome(s)?\b", text):
@@ -57,8 +60,8 @@ def derive_observations(problem: RawProblemData, archetypes) -> List[str]:
     return observations
 
 
-def derive_traps(problem: RawProblemData, constraints) -> List[EdgeCaseTrap]:
-    traps: List[EdgeCaseTrap] = []
+def derive_traps(problem: RawProblemData, constraints) -> list[EdgeCaseTrap]:
+    traps: list[EdgeCaseTrap] = []
     text = problem.statement_markdown.lower()
     bounds = list(constraints.variables.values())
     possible_overflow = (

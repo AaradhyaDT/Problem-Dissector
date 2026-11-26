@@ -4,24 +4,22 @@ import os
 import re
 import warnings
 from pathlib import Path
-from typing import List, Optional
 
 from dissector.adapters.base import BaseCorpusAdapter, RawProblemData
-
 
 SLUG_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 DEFAULT_TASKS_RELATIVE_PATH = Path("platforms") / "csacademy" / "tasks"
 
 
 class IEEEXtremeAdapter(BaseCorpusAdapter):
-    def __init__(self, root_path: Optional[Path] = None):
+    def __init__(self, root_path: Path | None = None):
         configured_root = root_path or os.environ.get("PROBLEM_DISSECTOR_CORPUS_ROOT")
         # Defaults to the current directory; --corpus-root removes ambiguity.
         self.root = Path(configured_root or Path.cwd()).expanduser().resolve()
         self.tasks_dir = self.root / DEFAULT_TASKS_RELATIVE_PATH
         self.index_file = self.root / "ledger" / "tasks_index.json"
 
-    def list_slugs(self) -> List[str]:
+    def list_slugs(self) -> list[str]:
         if self.index_file.is_file():
             try:
                 data = json.loads(self.index_file.read_text(encoding="utf-8"))
@@ -43,7 +41,7 @@ class IEEEXtremeAdapter(BaseCorpusAdapter):
             )
         return []
 
-    def load_problem(self, slug: str) -> Optional[RawProblemData]:
+    def load_problem(self, slug: str) -> RawProblemData | None:
         if not SLUG_PATTERN.fullmatch(slug):
             raise ValueError("Invalid problem slug. Use letters, digits, underscores, and hyphens only.")
 

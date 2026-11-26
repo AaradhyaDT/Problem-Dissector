@@ -1,8 +1,11 @@
-from dissector.constraint_analyzer import analyze_constraints, parse_numeric_val, derive_admissible_complexity
-from dissector.pattern_matcher import classify_archetypes
 from dissector.adapters.base import RawProblemData
-from dissector.models import DissectionReport
+from dissector.constraint_analyzer import (
+    derive_admissible_complexity,
+    parse_numeric_val,
+)
 from dissector.engine import dissect_problem
+from dissector.models import DissectionReport
+from dissector.pattern_matcher import classify_archetypes
 
 
 def test_parse_numeric_val():
@@ -68,8 +71,8 @@ $1 \leq M \leq 10^5$
 
 
 def test_build_agent_contract():
-    from dissector.engine import build_agent_contract
     from dissector.contract import AgentDissectionContract
+    from dissector.engine import build_agent_contract
 
     mock_prob = RawProblemData(
         slug="grid_task",

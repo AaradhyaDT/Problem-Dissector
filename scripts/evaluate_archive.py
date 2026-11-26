@@ -13,8 +13,9 @@ import json
 import re
 import sys
 from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -22,7 +23,6 @@ if str(REPO_ROOT) not in sys.path:
 
 from dissector.adapters.ieee_xtreme import IEEEXtremeAdapter
 from dissector.engine import dissect_problem
-
 
 ARCHETYPE_HEADING = re.compile(
     r"^[ \t]*###[ \t]+(?P<id>0[1-9]|10)\.[ \t]+\[",
@@ -33,7 +33,7 @@ TASK_LINK = re.compile(
 )
 
 
-def parse_catalog_labels(catalog_text: str) -> Tuple[Dict[str, str], List[str]]:
+def parse_catalog_labels(catalog_text: str) -> tuple[dict[str, str], list[str]]:
     """Extract curated slug -> archetype ID labels from the catalog's featured-task section.
 
     Only links inside section 3 (Algorithmic Archetype Profiles & Canonical Slugs)
@@ -49,8 +49,8 @@ def parse_catalog_labels(catalog_text: str) -> Tuple[Dict[str, str], List[str]]:
     if not taxonomy_section:
         return {}, []
 
-    labels_by_slug: Dict[str, Set[str]] = defaultdict(set)
-    current_id: Optional[str] = None
+    labels_by_slug: dict[str, set[str]] = defaultdict(set)
+    current_id: str | None = None
     for line in taxonomy_section.group(1).splitlines():
         heading = ARCHETYPE_HEADING.match(line)
         if heading:
@@ -67,15 +67,15 @@ def parse_catalog_labels(catalog_text: str) -> Tuple[Dict[str, str], List[str]]:
     }
     return labels, ambiguous
 
-def _rate(numerator: int, denominator: int) -> Optional[float]:
+def _rate(numerator: int, denominator: int) -> float | None:
     return round(numerator / denominator, 4) if denominator else None
 
 
 def evaluate_archive(
     corpus_root: Path,
-    catalog_path: Optional[Path] = None,
-    limit: Optional[int] = None,
-) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    catalog_path: Path | None = None,
+    limit: int | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Run extraction diagnostics over the corpus and classification on catalog labels."""
     root = corpus_root.expanduser().resolve()
     adapter = IEEEXtremeAdapter(root)
@@ -89,18 +89,18 @@ def evaluate_archive(
     else:
         labels, ambiguous = {}, []
 
-    rows: List[Dict[str, Any]] = []
-    missing_statements: List[str] = []
-    failed_tasks: List[Dict[str, str]] = []
-    no_bounds: List[str] = []
+    rows: list[dict[str, Any]] = []
+    missing_statements: list[str] = []
+    failed_tasks: list[dict[str, str]] = []
+    no_bounds: list[str] = []
     loaded = 0
     bound_task_count = 0
     heading_detected_count = 0
     multi_dimension_count = 0
     aggregate_warning_count = 0
     total_bounds = 0
-    difficulty_counts: Dict[str, int] = defaultdict(int)
-    confusion: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    difficulty_counts: dict[str, int] = defaultdict(int)
+    confusion: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     for slug in indexed_slugs:
         try:
@@ -109,7 +109,7 @@ def evaluate_archive(
                 missing_statements.append(slug)
                 continue
             report = dissect_problem(problem)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - record each task failure and continue the batch
             failed_tasks.append({"slug": slug, "error": f"{type(exc).__name__}: {exc}"})
             continue
 
@@ -165,7 +165,7 @@ def evaluate_archive(
     labeled_rows = [row for row in rows if row["expected_archetype_id"] is not None]
     top1_correct_count = sum(bool(row["top1_correct"]) for row in labeled_rows)
     top3_correct_count = sum(bool(row["top3_correct"]) for row in labeled_rows)
-    per_archetype: Dict[str, Dict[str, Any]] = {}
+    per_archetype: dict[str, dict[str, Any]] = {}
     for archetype_id in sorted(set(labels.values())):
         class_rows = [row for row in labeled_rows if row["expected_archetype_id"] == archetype_id]
         class_top1 = sum(bool(row["top1_correct"]) for row in class_rows)
@@ -216,7 +216,7 @@ def evaluate_archive(
     return summary, rows
 
 
-def _write_outputs(output_dir: Path, summary: Dict[str, Any], rows: List[Dict[str, Any]]) -> None:
+def _write_outputs(output_dir: Path, summary: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -239,7 +239,7 @@ def _write_outputs(output_dir: Path, summary: Dict[str, Any], rows: List[Dict[st
                 for key in csv_fields
             })
 
-    def pct(value: Optional[float]) -> str:
+    def pct(value: float | None) -> str:
         return "n/a" if value is None else f"{value * 100:.1f}%"
 
     lines = [
@@ -267,7 +267,7 @@ def _write_outputs(output_dir: Path, summary: Dict[str, Any], rows: List[Dict[st
     (output_dir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Measure Problem-Dissector extraction coverage and curated archetype ranking on IEEE-Xtreme-Archive."
     )
